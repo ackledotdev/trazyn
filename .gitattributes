@@ -1,0 +1,2 @@
+botfiles/warhammer40k_pages_current.xml filter=lfs diff=lfs merge=lfs -text
+*.xml filter=lfs diff=lfs merge=lfs -text

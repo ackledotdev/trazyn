@@ -1,0 +1,44 @@
+{
+	"author": "Akhil Pillai",
+	"dependencies": {
+		"@deno/kv": "^0.8.2",
+		"@discordjs/collection": "^2.1.1",
+		"discord.js": "^14.16.2",
+		"dotenv": "^16.4.5",
+		"express": "^4.21.0",
+		"helmet": "^7.1.0",
+		"jsoning": "^1.0.1",
+		"pino": "^9.4.0",
+		"pino-pretty": "^11.2.2"
+	},
+	"description": "",
+	"devDependencies": {
+		"@types/cors": "^2.8.17",
+		"@types/express": "^4.17.21",
+		"@typescript-eslint/eslint-plugin": "^8.5.0",
+		"@typescript-eslint/parser": "^8.5.0",
+		"knip": "^5.30.2",
+		"npm-check-updates": "^17.1.1",
+		"prettier": "^3.3.3",
+		"tsx": "^4.19.1",
+		"typescript": "^5.6.2"
+	},
+	"license": "GPL-3.0",
+	"main": "src/index.ts",
+	"type": "module",
+	"name": "discog",
+	"private": true,
+	"scripts": {
+		"build-commands": "tsx scripts/buildCommands.ts",
+		"build-image": "docker build -t akpi816218/discog . && docker push akpi816218/discog",
+		"check": "tsc",
+		"deploy": "npm ci && npm start",
+		"deploy-full": "npm ci && npm urn build-commands && npm start",
+		"fmt": "prettier -w .",
+		"knip": "knip",
+		"lint": "eslint .",
+		"precommit": "npm urn build",
+		"start": "tsx src/index.ts",
+		"up": "ncu -u && npm i"
+	}
+}

@@ -1,0 +1,1 @@
+This is an AI-powered bot which helps with questions related to Warhammer 40000 by feeding the Fandom pages through a GPT model.

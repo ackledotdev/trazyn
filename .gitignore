@@ -1,0 +1,8 @@
+botfiles/*.db.json
+*TOKEN*
+node_modules
+._*
+.DS_Store
+.Trashes
+*.env*
+*.env.*
