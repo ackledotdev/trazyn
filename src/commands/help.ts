@@ -4,17 +4,11 @@ import {
 	SlashCommandBuilder,
 	inlineCode
 } from 'discord.js';
-import { CommandHelpEntry } from '../lib/CommandHelpEntry';
+import { CommandHelpEntry } from '../lib/bot/CommandHelpEntry';
 import { Jsoning } from 'jsoning';
 import { Collection } from '@discordjs/collection';
 
 const db = new Jsoning('botfiles/cmnds.db.json');
-
-export const help = new CommandHelpEntry(
-	'coghelp',
-	'Shows general help or help for a specific command',
-	'[command: string]'
-);
 
 export const data = new SlashCommandBuilder()
 	.setName('coghelp')
@@ -30,6 +24,11 @@ export const data = new SlashCommandBuilder()
 			)
 			.setRequired(false);
 	});
+
+export const help = CommandHelpEntry.fromPartialSlashCommandBuilder(
+	data,
+	'[command: string]'
+);
 
 export const execute = async (interaction: ChatInputCommandInteraction) => {
 	const embed = new EmbedBuilder()

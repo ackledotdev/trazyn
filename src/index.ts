@@ -1,27 +1,16 @@
 import 'dotenv/config';
-import {
-	ActivityType,
-	Colors,
-	EmbedBuilder,
-	Events,
-	GatewayIntentBits,
-	OAuth2Scopes,
-	PresenceUpdateStatus,
-	Snowflake,
-	TimestampStyles,
-	codeBlock,
-	time
-} from 'discord.js';
-import { CommandClient } from './lib/discord/Extend';
+import { ActivityType, Events, PresenceUpdateStatus } from 'discord.js';
+import { CommandClient } from './lib/bot/discord/Extend';
 import { Methods, createServer } from './server';
-import { DENO_KV_URL, DatabaseKeys, PORT, permissionsBits } from './config';
+import { PORT } from './config';
 import { argv, cwd, stdout } from 'process';
-import { Command, Event } from './lib/discord/types';
+import { Button, Command, Event } from './lib/bot/discord/types';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from './logger';
 import { readdirSync } from 'fs';
-import { Jsoning } from 'jsoning';
+import { Jsoning, JSONValue } from 'jsoning';
+import { sendError } from './lib/bot/process';
 
 argv.shift();
 argv.shift();
@@ -30,26 +19,14 @@ if (argv.includes('-d')) {
 	logger.debug('Debug mode enabled.');
 }
 
-const db = new Jsoning('botfiles/db.json');
-logger.log('Opened database.');
+logger.info('Opened database.');
 
 const client = new CommandClient({
-	intents: [
-		GatewayIntentBits.DirectMessages,
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildInvites,
-		GatewayIntentBits.GuildMembers,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.GuildMessageReactions,
-		GatewayIntentBits.GuildModeration,
-		GatewayIntentBits.GuildScheduledEvents,
-		GatewayIntentBits.GuildWebhooks,
-		GatewayIntentBits.MessageContent
-	],
+	intents: [],
 	presence: {
 		activities: [
 			{
-				name: '/about',
+				name: 'Warhammer 40,000',
 				type: ActivityType.Playing
 			}
 		],
@@ -60,17 +37,6 @@ const client = new CommandClient({
 logger.debug('Created client instance.');
 
 const server = createServer(
-	{
-		handler: (_req, res) =>
-			res.redirect(
-				client.generateInvite({
-					permissions: permissionsBits,
-					scopes: [OAuth2Scopes.Bot, OAuth2Scopes.Guilds, OAuth2Scopes.Identify]
-				})
-			),
-		method: Methods.GET,
-		route: '/invite'
-	},
 	{
 		handler: (_req, res) => res.redirect('/status'),
 		method: Methods.GET,
@@ -106,30 +72,6 @@ const server = createServer(
 		},
 		method: Methods.GET,
 		route: '/bot'
-	},
-	{
-		handler: (req, res) => {
-			if (
-				req.headers['content-type'] !== 'application/json' &&
-				req.headers['content-type'] != undefined
-			)
-				res.status(415).end();
-			else if (client.isReady())
-				res
-					.status(200)
-					.contentType('application/json')
-					.send({
-						commands: client.commands.map(command => ({
-							data: command.data.toJSON(),
-							help: command.help?.toJSON()
-						})),
-						timestamp: Date.now()
-					})
-					.end();
-			else res.status(503).end();
-		},
-		method: Methods.GET,
-		route: '/commands'
 	}
 );
 logger.debug('Created server instance.');
@@ -138,18 +80,15 @@ const commandsPath = join(dirname(fileURLToPath(import.meta.url)), 'commands');
 const commandFiles = readdirSync(commandsPath).filter(file =>
 	file.endsWith('.ts')
 );
-logger.debug('Loaded command files.');
 const cmndb = new Jsoning('botfiles/cmnds.db.json');
 for (const file of commandFiles) {
 	const filePath = join(commandsPath, file);
-	logger.debug(`Loading command ${filePath}`);
 	const command: Command = await import(filePath);
 	client.commands.set(command.data.name, command);
 	if (command.help)
 		await cmndb.set(
 			command.data.name,
-			// @ts-expect-error types
-			command.help.toJSON()
+			command.help.toJSON() as unknown as JSONValue
 		);
 }
 client.commands.freeze();
@@ -164,7 +103,7 @@ for (const file of eventFiles) {
 		client.once(event.name, async (...args) => await event.execute(...args));
 	else client.on(event.name, async (...args) => await event.execute(...args));
 }
-logger.debug('Loaded events.');
+logger.info('Loaded events.');
 
 client
 	.on(Events.ClientReady, () => logger.info('Client#ready'))
@@ -174,22 +113,26 @@ client
 			const command = client.commands.get(interaction.commandName);
 			if (!command) {
 				await interaction.reply('Internal error: Command not found');
+				await sendError(
+					new Error(`Command not found: ${interaction.commandName}`),
+					client
+				);
 				return;
 			}
 			try {
 				await command.execute(interaction);
 			} catch (e) {
-				logger.error(e);
-				if (interaction.replied || interaction.deferred) {
+				if (interaction.replied || interaction.deferred)
 					await interaction.editReply(
 						'There was an error while running this command.'
 					);
-				} else {
+				else
 					await interaction.reply({
 						content: 'There was an error while running this command.',
 						ephemeral: true
 					});
-				}
+				if (e instanceof Error) await sendError(e, client);
+				logger.error(e);
 			}
 		}
 	})
@@ -212,35 +155,15 @@ process.on('SIGINT', () => {
 server.listen(process.env.PORT ?? PORT);
 logger.info(`Listening to HTTP server on port ${process.env.PORT ?? PORT}.`);
 
-process.on('uncaughtException', sendError);
-process.on('unhandledRejection', sendError);
-logger.debug('Set up error handling.');
+process.on(
+	'uncaughtException',
+	e => e instanceof Error && sendError(e, client)
+);
+process.on(
+	'unhandledRejection',
+	e => e instanceof Error && sendError(e, client)
+);
+
+logger.info('Set up error handling.');
 
 logger.info('Process setup complete.');
-
-async function sendError(e: Error) {
-	for (const devId of (await db.get<Snowflake[]>([DatabaseKeys.Devs]))?.value ??
-		[]) {
-		client.users.fetch(devId).then(user => {
-			const date = new Date();
-			user.send({
-				embeds: [
-					new EmbedBuilder()
-						.setTitle('Error Log')
-						.setDescription(e.message)
-						.addFields({ name: 'Stack Trace', value: codeBlock(e.stack ?? '') })
-						.addFields({
-							name: 'ISO 8601 Timestamp',
-							value: date.toISOString()
-						})
-						.addFields({
-							name: 'Localized DateTime',
-							value: time(date, TimestampStyles.LongDateTime)
-						})
-						.setColor(Colors.Red)
-						.setTimestamp()
-				]
-			});
-		});
-	}
-}

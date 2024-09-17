@@ -1,6 +1,7 @@
 import {
 	APIEmbedField,
 	RestOrArray,
+	SlashCommandBuilder,
 	inlineCode,
 	normalizeArray
 } from 'discord.js';
@@ -89,6 +90,15 @@ export class CommandHelpEntry {
 	 */
 	static fromJSON(json: SerializedCommandHelpEntry): CommandHelpEntry {
 		return new CommandHelpEntry(json.name, json.description, json.usage ?? []);
+	}
+
+	static fromPartialSlashCommandBuilder<
+		T extends {
+			readonly description: string;
+			readonly name: string;
+		}
+	>(builder: T, ...usage: RestOrArray<string>): CommandHelpEntry {
+		return new CommandHelpEntry(builder.name, builder.description, ...usage);
 	}
 }
 

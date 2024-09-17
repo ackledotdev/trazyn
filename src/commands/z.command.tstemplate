@@ -3,12 +3,14 @@ import {
 	EmbedBuilder,
 	SlashCommandBuilder
 } from 'discord.js';
+// @ts-expect-error Remove this after renaming to *.ts
+import { CommandHelpEntry } from '@/lib/CommandHelpEntry';
 
 export const data = new SlashCommandBuilder()
 	.setName('name')
 	.setDescription('description');
 
-// ! Make sure to add command to `coghelp.ts`
+export const help = CommandHelpEntry.fromPartialSlashCommandBuilder(data);
 
 export const execute = async (interaction: ChatInputCommandInteraction) => {
 	await interaction.reply({

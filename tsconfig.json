@@ -11,7 +11,11 @@
 		"noEmit": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,
-		"alwaysStrict": true
+		"alwaysStrict": true,
+		"paths": {
+			"@/*": ["src/*"]
+		},
+		"baseUrl": "./"
 	},
 	"include": ["src/**/*", "scripts/**/*", "*.ts"],
 	"exclude": ["node_modules"]

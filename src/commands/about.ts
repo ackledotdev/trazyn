@@ -8,13 +8,13 @@ import {
 	hyperlink,
 	inlineCode
 } from 'discord.js';
-import { CommandHelpEntry } from '../lib/CommandHelpEntry';
+import { CommandHelpEntry } from '@/lib/bot/CommandHelpEntry';
 
 export const data = new SlashCommandBuilder()
 	.setName('about')
 	.setDescription('About DisCog');
 
-export const help = new CommandHelpEntry('about', 'Shows info about the bot');
+export const help = CommandHelpEntry.fromPartialSlashCommandBuilder(data);
 
 export const execute = async (interaction: ChatInputCommandInteraction) => {
 	await interaction.reply({

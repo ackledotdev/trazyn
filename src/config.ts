@@ -15,8 +15,4 @@ export const permissionsBits = new PermissionsBitField().add(
 
 export const PORT = 8000;
 
-export const DENO_KV_URL = null;
-
-export enum DatabaseKeys {
-	Devs = 'devs'
-}
+export const Devs = ['817214551740776400'];
