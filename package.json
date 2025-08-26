@@ -15,9 +15,6 @@
 	"devDependencies": {
 		"@types/cors": "^2.8.17",
 		"@types/express": "^4.17.21",
-		"@typescript-eslint/eslint-plugin": "^8.6.0",
-		"@typescript-eslint/parser": "^8.6.0",
-		"knip": "^5.30.2",
 		"npm-check-updates": "^17.1.1",
 		"prettier": "^3.3.3",
 		"tsx": "^4.19.1",
@@ -35,8 +32,6 @@
 		"deploy": "npm ci && npm start",
 		"deploy-full": "npm ci && npm urn build-commands && npm start",
 		"fmt": "prettier -w .",
-		"knip": "knip",
-		"lint": "eslint .",
 		"precommit": "npm urn build",
 		"start": "tsx src/index.ts",
 		"up": "ncu -u && npm i"
