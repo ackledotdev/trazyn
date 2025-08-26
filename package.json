@@ -12,7 +12,6 @@
 		"pino-pretty": "^13.1.1",
 		"textchunk": "^1.1.0"
 	},
-	"description": "",
 	"devDependencies": {
 		"@types/cors": "^2.8.19",
 		"@types/express": "^5.0.3",
@@ -21,12 +20,10 @@
 		"tsx": "^4.20.5",
 		"typescript": "^5.9.2"
 	},
-	"license": "GPL-3.0",
 	"main": "src/index.ts",
 	"type": "module",
 	"private": true,
 	"scripts": {
-		"build-commands": "tsx scripts/buildCommands.ts",
 		"check": "tsc",
 		"deploy": "npm ci && npm start",
 		"fmt": "prettier -w .",

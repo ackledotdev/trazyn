@@ -1,5 +1,5 @@
 # Start your image with a node base image
-FROM node:21
+FROM node:24
 
 # The /app directory should act as the main application directory
 WORKDIR /app
@@ -12,10 +12,10 @@ COPY ./src ./src
 COPY ./botfiles ./botfiles
 COPY ./scripts ./scripts
 
-# Install node packages, install serve, build the app, and remove dependencies at the end
+# Install node packages
 RUN npm ci
 
 EXPOSE 8000
 
-# Start the app using serve command
+# Start the app
 CMD [ "npm", "start" ]
