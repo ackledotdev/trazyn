@@ -3,7 +3,9 @@ import {
 	ActivityType,
 	Client,
 	Events,
+	Message,
 	OAuth2Scopes,
+	OmitPartialGroupDMChannel,
 	Partials,
 	PermissionFlagsBits,
 	PresenceUpdateStatus
@@ -188,90 +190,96 @@ await client
 	.then(() => logger.info('Logged in.'));
 
 client.on(Events.MessageCreate, async message => {
-	logger.debug(
-		`Message received in ${message.channel.id} from ${message.author.tag}: ${message.content}`
-	);
-	if (message.channel.isDMBased()) logger.debug('DM received.');
-
-	if (
-		message.author.bot ||
-		(!message.mentions.has((client as Client<true>).user.id) &&
-			!message.channel.isDMBased())
-	)
-		return;
-
-	logger.debug(`Valid message: ${message.content}`);
-
-	let sentYet = false;
-
-	function sendTypingIndicator() {
-		message.channel.sendTyping().then(() => {
-			setTimeout(() => {
-				if (!sentYet) sendTypingIndicator();
-			}, 9_000);
-		});
-	}
-
-	sendTypingIndicator();
-
-	message.react('👍');
-
-	let context: EasyInputMessage[] = [];
-	if (message.reference?.messageId) {
-		const referencedMessage = await message.channel.messages.fetch(
-			message.reference.messageId
+	try {
+		logger.debug(
+			`Message received in ${message.channel.id} from ${message.author.tag}: ${message.content}`
 		);
-		if (referencedMessage) {
-			context.push({
-				content: referencedMessage.content,
-				role:
-					referencedMessage.author.id === message.client.user.id
-						? 'assistant'
-						: 'user'
+		if (message.channel.isDMBased()) logger.debug('DM received.');
+
+		if (
+			message.author.bot ||
+			(!message.mentions.has((client as Client<true>).user.id) &&
+				!message.channel.isDMBased())
+		)
+			return;
+
+		logger.debug(`Valid message: ${message.content}`);
+
+		let sentYet = false;
+
+		function sendTypingIndicator(
+			msg: OmitPartialGroupDMChannel<Message<boolean>>
+		) {
+			msg.channel.sendTyping().then(() => {
+				setTimeout(() => {
+					if (!sentYet) sendTypingIndicator(msg);
+				}, 9_000);
 			});
 		}
-	}
 
-	openai.responses
-		.create({
-			model: 'gpt-5',
-			input: [
-				...context,
-				{
-					content: message.content
-						.replace(`<@${message.client.user.id}>`, '')
-						.trim(),
-					role: 'user'
-				}
-			],
-			// temperature: 0.7,
-			instructions:
-				'You are Trazyn the Infinite, the ancient Necron Overlord from Warhammer 40k. Use a tone that is condescending, eloquent, and laced with dry sarcasm. You see all other beings as ephemeral distractions or quaint relics, and you are more interested in preserving history than participating in petty mortal affairs. You should reference your vast collection, make passive-aggressive comments about other races (especially Orikan, Eldar, and humans), and always act as if you are the only one who truly understands the value of the past. You may not give responses longer than 2000 characters. Note that emojis and other unicode characters, if used, count as two characters each. If possible. Keep answers concise while still providing depth.'
-		})
-		.then(async ({ output_text }: Response) => {
-			logger.debug(`Got response: ${output_text.length} characters.`);
+		message.react('👍').finally(() => sendTypingIndicator(message));
 
-			if (output_text.length > 2_000) {
-				const chunks: string[] = chunk(output_text, 2_000);
-				await message.reply({
-					content: chunks.shift() || 'Whoops! Something went wrong.'
+		let context: EasyInputMessage[] = [];
+		if (message.reference?.messageId) {
+			const referencedMessage = await message.channel.messages.fetch(
+				message.reference.messageId
+			);
+			if (referencedMessage) {
+				context.push({
+					content: referencedMessage.content,
+					role:
+						referencedMessage.author.id === message.client.user.id
+							? 'assistant'
+							: 'user'
 				});
-				sentYet = true;
-				for (const c of chunks) {
-					await message.channel.send({
-						content: c || 'Whoops! Something went wrong.'
+			}
+		}
+
+		openai.responses
+			.create({
+				model: 'gpt-5',
+				input: [
+					...context,
+					{
+						content: message.content
+							.replace(`<@${message.client.user.id}>`, '')
+							.trim(),
+						role: 'user'
+					}
+				],
+				// temperature: 0.7,
+				instructions:
+					'You are Trazyn the Infinite, the ancient Necron Overlord from Warhammer 40k. Use a tone that is condescending, eloquent, and laced with dry sarcasm. You see all other beings as ephemeral distractions or quaint relics, and you are more interested in preserving history than participating in petty mortal affairs. You should reference your vast collection, make passive-aggressive comments about other races (especially Orikan, Eldar, and humans), and always act as if you are the only one who truly understands the value of the past. You may not give responses longer than 2000 characters. Note that emojis and other unicode characters, if used, count as two characters each. If possible. Keep answers concise while still providing depth.'
+			})
+			.then(async ({ output_text }: Response) => {
+				logger.debug(`Got response: ${output_text.length} characters.`);
+
+				if (output_text.length > 2_000) {
+					const chunks: string[] = chunk(output_text, 2_000);
+					await message.reply({
+						content: chunks.shift() || 'Whoops! Something went wrong.'
 					});
-				}
-			} else
-				await message.reply({
-					content: output_text || 'Whoops! Something went wrong.'
-				});
-			sentYet = true;
-		})
-		.catch(async () => await message.reply('Whoops! Something went wrong.'));
+					sentYet = true;
+					for (const c of chunks) {
+						await message.channel.send({
+							content: c || 'Whoops! Something went wrong.'
+						});
+					}
+				} else
+					await message.reply({
+						content: output_text || 'Whoops! Something went wrong.'
+					});
+				sentYet = true;
+			})
+			.catch(async () => await message.reply('Whoops! Something went wrong.'));
+	} catch (e) {
+		logger.error(e);
+		await sendError(e as Error, client);
+	}
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
+	await sendError(new Error('SIGINT received'), client);
 	client.destroy();
 	stdout.write('\n');
 	logger.info('Destroyed Client.');
